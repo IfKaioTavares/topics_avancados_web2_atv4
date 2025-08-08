@@ -45,7 +45,7 @@ services:
       PGPORT: 5432
       MQTT_BROKER_URL: mqtt://mosquitto:1883
       PORT: 3000
-      AUTH_TOKEN: iot-token-2025-secure
+      JWT_SECRET: iot-jwt-secret-key-2025-production
     ports:
       - "3000:3000"
     depends_on:

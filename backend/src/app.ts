@@ -1,8 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
 import sensorRoutes from './routes/sensorRoutes';
+import authRoutes from './routes/authRoutes';
 import { initMQTT } from './services/mqttService';
 import db from './db';
 
@@ -13,12 +12,14 @@ export function startServer() {
 
   app.get('/', (req, res) => res.json({
     message: 'API IoT está em execução',
-    version: '1.0.0',
+    version: '2.0.0',
     authentication: {
-      info: 'Algumas rotas requerem autenticação via Bearer Token',
-      authInfoEndpoint: '/api/sensors/auth/info'
+      info: 'Sistema JWT com expiração de 15 minutos',
+      loginEndpoint: 'POST /api/auth/login',
+      refreshEndpoint: 'POST /api/auth/refresh'
     },
     endpoints: {
+      auth: '/api/auth/*',
       sensors: '/api/sensors/:type/latest',
       predictions: '/api/sensors/:type/predict (🔒)',
       analysis: '/api/sensors/:type/analysis (🔒)',
@@ -26,16 +27,10 @@ export function startServer() {
     }
   }));
 
+  app.use('/api/auth', authRoutes);
   app.use('/api/sensors', sensorRoutes);
 
-  const server = http.createServer(app);
-  const io = new SocketIOServer(server, {
-    cors: {
-      origin: '*'
-    }
-  });
-
-  initMQTT(io);
+  initMQTT();
 
   db.query(`CREATE TABLE IF NOT EXISTS sensors_data (
     id SERIAL PRIMARY KEY,
@@ -47,7 +42,7 @@ export function startServer() {
       console.error('Erro ao criar tabela sensors_data:', err);
     });
 
-  return server;
+  return app;
 }
 
 export default startServer;

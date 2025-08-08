@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import socketService from '../services/socketService';
 import './AlertPanel.css';
 
 interface Alert {
@@ -28,43 +27,43 @@ const AlertPanel: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
-    const socket = socketService.getSocket();
-    if (!socket) return;
+    // const socket = socketService.getSocket();
+    // if (!socket) return;
 
-    // Escutar alertas
-    socket.on('alert', (data: any) => {
-      const alert: Alert = {
-        id: `alert_${Date.now()}`,
-        sensorType: data.sensorType,
-        message: data.message,
-        values: data.values,
-        currentValue: data.currentValue,
-        timestamp: new Date(data.timestamp),
-        type: 'alert'
-      };
+    // // Escutar alertas
+    // socket.on('alert', (data: any) => {
+    //   const alert: Alert = {
+    //     id: `alert_${Date.now()}`,
+    //     sensorType: data.sensorType,
+    //     message: data.message,
+    //     values: data.values,
+    //     currentValue: data.currentValue,
+    //     timestamp: new Date(data.timestamp),
+    //     type: 'alert'
+    //   };
       
-      setNotifications(prev => [alert, ...prev.slice(0, 9)]); // Manter apenas 10 notificações
-    });
+    //   setNotifications(prev => [alert, ...prev.slice(0, 9)]); // Manter apenas 10 notificações
+    // });
 
-    // Escutar previsões
-    socket.on('prediction', (data: any) => {
-      const prediction: Prediction = {
-        id: `prediction_${Date.now()}`,
-        sensorType: data.sensorType,
-        predictedValue: data.predictedValue,
-        trend: data.trend,
-        confidence: data.confidence,
-        timestamp: new Date(data.timestamp),
-        type: 'prediction'
-      };
+    // // Escutar previsões
+    // socket.on('prediction', (data: any) => {
+    //   const prediction: Prediction = {
+    //     id: `prediction_${Date.now()}`,
+    //     sensorType: data.sensorType,
+    //     predictedValue: data.predictedValue,
+    //     trend: data.trend,
+    //     confidence: data.confidence,
+    //     timestamp: new Date(data.timestamp),
+    //     type: 'prediction'
+    //   };
       
-      setNotifications(prev => [prediction, ...prev.slice(0, 9)]);
-    });
+    //   setNotifications(prev => [prediction, ...prev.slice(0, 9)]);
+    // });
 
-    return () => {
-      socket.off('alert');
-      socket.off('prediction');
-    };
+    // return () => {
+    //   socket.off('alert');
+    //   socket.off('prediction');
+    // };
   }, []);
 
   const clearNotifications = () => {

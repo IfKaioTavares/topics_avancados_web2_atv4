@@ -12,7 +12,7 @@ import {
   ChartOptions,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { SensorData } from '../services/socketService';
+import { SensorData } from '../services/apiService';
 
 ChartJS.register(
   CategoryScale,
@@ -44,11 +44,6 @@ const SensorChart: React.FC<SensorChartProps> = ({
   const filteredData = sensorData
     .filter(data => data.type === sensorType)
     .slice(-30); // Aumentado para 30 pontos para melhor visualização
-
-  // Debug: log dos dados filtrados
-  useEffect(() => {
-    console.log(`Dados filtrados para ${sensorType}:`, filteredData.length);
-  }, [filteredData, sensorType]);
 
   // Verificar se há alerta (últimos dois valores acima do limite)
   const checkAlert = () => {

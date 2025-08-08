@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import db from '../db';
 import { getMovingAverage, predictNextValue, checkConsecutiveHighValues } from '../services/predictionService';
-import { authenticateToken, optionalAuth } from '../middleware/auth';
+import { authenticateJWT, optionalAuth, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-router.post('/auth/validate', authenticateToken, (req, res) => {
+router.post('/auth/validate', authenticateJWT, (req, res) => {
   res.json({ 
     message: 'Token válido', 
     timestamp: new Date().toISOString(),
@@ -15,7 +15,9 @@ router.post('/auth/validate', authenticateToken, (req, res) => {
 
 router.get('/auth/info', (req, res) => {
   res.json({ 
-    message: 'Para acessar rotas protegidas, use: Authorization: Bearer iot-token-2025-secure',
+    message: 'Para acessar rotas protegidas, use: Authorization: Bearer <jwt-token>',
+    authEndpoint: 'POST /api/auth/login',
+    refreshEndpoint: 'POST /api/auth/refresh',
     protectedRoutes: [
       'GET /api/sensors/:type/predict',
       'GET /api/sensors/:type/analysis', 
@@ -36,9 +38,41 @@ router.get('/:type/latest', optionalAuth, async (req, res) => {
   const limit = Number(req.query.limit) || 50;
   try {
     const { rows } = await db.query(
-      'SELECT value, timestamp FROM sensors_data WHERE sensor_type = $1 ORDER BY timestamp DESC LIMIT $2',
+      'SELECT id, value, timestamp, sensor_type as type FROM sensors_data WHERE sensor_type = $1 ORDER BY timestamp DESC LIMIT $2',
       [type, limit]
     );
+    res.json(rows.reverse());
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao obter dados' });
+  }
+});
+
+/**
+ * Retorna os últimos valores de todos os sensores.
+ * Exemplo: GET /api/sensors/latest?limit=50
+ */
+router.get('/latest', optionalAuth, async (req, res) => {
+  const limit = Number(req.query.limit) || 50;
+  const startTime = req.query.startTime ? new Date(req.query.startTime as string) : null;
+  
+  try {
+    let query = 'SELECT id, value, timestamp, sensor_type as type FROM sensors_data';
+    let params: any[] = [];
+    
+    if (startTime) {
+      query += ' WHERE timestamp > $1';
+      params.push(startTime);
+    }
+    
+    query += ' ORDER BY timestamp DESC';
+    
+    if (limit > 0) {
+      query += ` LIMIT $${params.length + 1}`;
+      params.push(limit);
+    }
+    
+    const { rows } = await db.query(query, params);
     res.json(rows.reverse());
   } catch (err: any) {
     console.error(err);
@@ -50,7 +84,7 @@ router.get('/:type/latest', optionalAuth, async (req, res) => {
  * Fornece uma previsão simples (média móvel) para o próximo valor do sensor.
  * Exemplo: GET /api/sensors/temperature/predict
  */
-router.get('/:type/predict', authenticateToken, async (req, res) => {
+router.get('/:type/predict', authenticateJWT, async (req, res) => {
   const type = req.params.type;
   try {
     const predicted = await getMovingAverage(type);
@@ -65,7 +99,7 @@ router.get('/:type/predict', authenticateToken, async (req, res) => {
  * Fornece análise preditiva avançada com tendência
  * Exemplo: GET /api/sensors/temperature/analysis
  */
-router.get('/:type/analysis', authenticateToken, async (req, res) => {
+router.get('/:type/analysis', authenticateJWT, async (req, res) => {
   const type = req.params.type;
   try {
     const analysis = await predictNextValue(type);
@@ -80,7 +114,7 @@ router.get('/:type/analysis', authenticateToken, async (req, res) => {
  * Verifica se os dois últimos valores registrados estão acima do limite.
  * Exemplo: GET /api/sensors/gas/alerts
  */
-router.get('/:type/alerts', authenticateToken, async (req, res) => {
+router.get('/:type/alerts', authenticateJWT, async (req, res) => {
   const type = req.params.type;
   try {
     const alertData = await checkConsecutiveHighValues(type);
