@@ -10,7 +10,7 @@
 
 ## 1. Diagrama de Arquitetura
 
-![Arquitetura do Sistema](./imgs/arquitetura.png)
+![Arquitetura do Sistema](./imgs/arquitetura.jpeg)
 
 A arquitetura do sistema IoT implementada segue uma abordagem de microsserviços containerizada, composta pelos seguintes componentes principais:
 
