@@ -1,0 +1,128 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: iot_postgres
+    environment:
+      POSTGRES_DB: iot_sensors
+      POSTGRES_USER: iot_user
+      POSTGRES_PASSWORD: iot_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - iot_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iot_user -d iot_sensors"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: iot_mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    networks:
+      - iot_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: iot_backend
+    environment:
+      NODE_ENV: production
+      PGHOST: postgres
+      PGUSER: iot_user
+      PGPASSWORD: iot_password
+      PGDATABASE: iot_sensors
+      PGPORT: 5432
+      MQTT_BROKER_URL: mqtt://mosquitto:1883
+      PORT: 3000
+      AUTH_TOKEN: iot-token-2025-secure
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    networks:
+      - iot_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: iot_frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - iot_network
+    restart: unless-stopped
+
+  sensor-temperature:
+    build:
+      context: ./sensors
+      dockerfile: Dockerfile
+    container_name: iot_sensor_temperature
+    environment:
+      MQTT_BROKER_URL: mqtt://mosquitto:1883
+      NODE_ENV: production
+    depends_on:
+      - mosquitto
+      - backend
+    networks:
+      - iot_network
+    restart: unless-stopped
+    command: ["npm", "run", "start:temperature"]
+
+  sensor-gas:
+    build:
+      context: ./sensors
+      dockerfile: Dockerfile
+    container_name: iot_sensor_gas
+    environment:
+      MQTT_BROKER_URL: mqtt://mosquitto:1883
+      NODE_ENV: production
+    depends_on:
+      - mosquitto
+      - backend
+    networks:
+      - iot_network
+    restart: unless-stopped
+    command: ["npm", "run", "start:gas"]
+
+  sensor-light:
+    build:
+      context: ./sensors
+      dockerfile: Dockerfile
+    container_name: iot_sensor_light
+    environment:
+      MQTT_BROKER_URL: mqtt://mosquitto:1883
+      NODE_ENV: production
+    depends_on:
+      - mosquitto
+      - backend
+    networks:
+      - iot_network
+    restart: unless-stopped
+    command: ["npm", "run", "start:light"]
+
+networks:
+  iot_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mosquitto_data:
+  mosquitto_logs:

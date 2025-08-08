@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+build
+.git
+.gitignore
+README.md
+.env
+coverage
+.nyc_output
+public/static/js/*.map
+public/static/css/*.map
